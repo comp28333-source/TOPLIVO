@@ -1,1 +1,52 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Cordova globally
+        run: npm install -g cordova
+
+      - name: Create Cordova project and disable splash
+        run: |
+          cordova create my-app com.toplivo.app Generator Moto
+          cd my-app
+          cordova platform add android
+          cp ../index.html www/index.html
+          
+          if [ -f "../icon.png" ]; then
+            mkdir -p platforms/android/app/src/main/res/mipmap-xxhdpi/
+            cp ../icon.png platforms/android/app/src/main/res/mipmap-xxhdpi/icon.png
+            cp ../icon.png platforms/android/app/src/main/res/drawable/icon.png
+            sed -i '/<\/widget>/i \    <icon src="../icon.png" />' config.xml
+          fi
+
+          sed -i '/<\/widget>/i \    <preference name="SplashScreen" value="none" />' config.xml
+          sed -i '/<\/widget>/i \    <preference name="SplashMaintainScrollPosition" value="true" />' config.xml
+
+          cordova build android
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: toplivo-apk
+          path: my-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
 
